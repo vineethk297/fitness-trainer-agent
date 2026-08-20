@@ -1,0 +1,72 @@
+# === Byte-compiled / optimized / DLL files ===
+__pycache__/
+*.py[cod]
+*$py.class
+
+# === C extensions ===
+*.so
+
+# === Distribution / packaging ===
+bin/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# === Jupyter Notebooks ===
+.ipynb_checkpoints
+
+# === Virtual Environments ===
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# === Testing / Coverage ===
+.cache
+.pytest_cache/
+.tox/
+.noscript/
+.coverage
+.coverage.*
+htmlcov/
+.dbcvstore
+
+# === Linters and Formatters ===
+.ruff_cache/
+.mypy_cache/
+.black
+.pyre/
+
+# === Environment Variables & Secrets (CRITICAL) ===
+.env
+.env.*
+!.env.example
+secrets.yaml
+
+# === IDEs and Editors ===
+# VS Code
+.vscode/
+
+# PyCharm / IntelliJ
+.idea/
+
+# OS generated files
+.DS_Store
+Thumbs.db

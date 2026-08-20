@@ -1,0 +1,12 @@
+The Sedentary Desk Worker (Re-entry & Posture)
+Demographics: Age 34, remote software engineer.
+
+Goal: Improve posture, reduce lower back stiffness, build a baseline habit of moving.
+
+Current Activity: Almost entirely sedentary (8–10 hours/day at desk), walks occasionally on weekends.
+
+Constraints & Schedule: 3 days/week, max 30 minutes/session. No home gym (bodyweight/resistance bands only).
+
+Injuries/Medical: Mild lower back ache after long sitting sessions (no sharp pain/medical diagnosis).
+
+Test Focus: Tests whether the model keeps volume low, prioritizes habit-building, includes safe spine/hip mobility, and formats short 30-minute sessions cleanly.
