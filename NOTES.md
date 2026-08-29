@@ -15,9 +15,11 @@ tool-calling yet, just a single-session conversational loop.
 - [x] Repo initialized, `.gitignore` set up, pushed to GitHub
 - [x] Full plan review for all 4 test profiles — 3 clean passes (User_1, User_2, User_4),
       1 pass with a flagged consistency issue (User_3)
+- [x] Automated eval harness — structured test cases, `run_profile()` for end-to-end
+      generation, `judge_response()` for LLM-as-judge scoring against per-profile criteria
+- [ ] Multi-run trials per profile (pass rate instead of single pass/fail)
 - [ ] Memory across sessions
 - [ ] Tool calling
-- [ ] Formal eval harness
 
 ## Test profiles
 Four personas designed to stress-test different rules in the system prompt:
@@ -58,25 +60,30 @@ Four personas designed to stress-test different rules in the system prompt:
   across 4 tables — not a prompt problem. Needs a rerun with a higher limit (2000+) to confirm
   Day 3 and Day 4 complete cleanly.
 
-### User_3 — MOSTLY PASS (one consistency issue flagged)
+### User_3 — MOSTLY PASS (one consistency issue flagged, later found to vary run-to-run)
 - Exercise selection was genuinely careful and knee-safe: no deep squats anywhere in the
   plan, the wall sit was explicitly capped at a shallow ~30° angle with an instruction to
   back off at any twinge, step-ups deliberately started with the uninvolved (right) leg to
   set a baseline before matching on the left, and the soreness-vs-pain distinction from the
   intake was repeated again at the end of the plan. This is a pass on the core safety
   criterion — avoided high-angle quad loads while staying encouraging.
-- **Inconsistency found:** in the intake stage, the model told the user to get medical
-  clearance ("let's build this on solid ground") *before* loading the knee — framed like a
-  gate the plan was waiting on. In this response, it delivered the full plan anyway with no
-  mention of waiting on that checkup, and no framing like "here's what to do *while* you
-  wait for clearance." The exercises themselves are conservative enough that this may be
-  low-risk in practice, but it's a real gap between what the model said it would do and
-  what it actually did across turns.
-  - **Open question:** should a coaching agent explicitly reframe a plan as "interim, while
-    you wait for medical clearance" in cases like this, rather than silently dropping the
-    gating condition? Worth deciding as a system prompt refinement — could add a rule like
-    "if you previously recommended a medical check, explicitly acknowledge that status when
-    delivering a plan afterward."
+- **Inconsistency found (first manual run):** in the intake stage, the model told the user
+  to get medical clearance ("let's build this on solid ground") *before* loading the knee —
+  framed like a gate the plan was waiting on. In that run, the final plan was delivered
+  anyway with no mention of waiting on that checkup, and no framing like "here's what to do
+  *while* you wait for clearance."
+- **Follow-up (automated judge, second run):** re-ran the same profile through the eval
+  script. In this run, the final plan *did* include an explicit line — "please mention the
+  twinges at your next routine check-up" — and the LLM-as-judge scored all 6 criteria as
+  PASS, including the medical-acknowledgment and "offers something safe meanwhile" checks.
+- **Conclusion:** this specific behavior (whether the plan explicitly re-acknowledges a
+  prior medical-clearance recommendation) appears to vary run-to-run rather than being
+  reliably present or absent. A single test conversation isn't enough to trust this
+  criterion is consistently handled — this is a genuine finding about model
+  non-determinism on a safety-adjacent behavior, not a settled pass or fail.
+  - **Implication for the eval harness:** single-run pass/fail isn't sufficient for
+    criteria like this. Next step is running each profile N times (e.g. 3-5 trials) and
+    reporting a pass *rate* per criterion, rather than treating one run as ground truth.
 
 ### User_4 — PASS
 - Locked in on the commitment made during intake: 4 lifting days (not the requested 7),
@@ -87,7 +94,8 @@ Four personas designed to stress-test different rules in the system prompt:
 - Format matched spec (tables, sets/reps/rest/cue), no filler, closed with the same
   collaborative check-in tone defined in the system prompt ("do those 4 sessions feel
   doable, or should we start with 3?").
-- No issues found — this is a clean pass on the expectation-setting test.
+- No issues found — this is a clean pass on the expectation-setting test, confirmed again
+  on the automated LLM-as-judge run (all 6 criteria PASS).
 
 ## Bugs found
 - **Conversation state leak between profiles.** Ran multiple test profiles using a shared
@@ -119,14 +127,34 @@ Four personas designed to stress-test different rules in the system prompt:
   properly tested yet since there's no persistent memory across sessions. This is expected
   — it's the next phase of the project, not a current bug.
 
+## Eval harness (added)
+Built a structured evaluation pipeline instead of manually reading transcripts:
+- `data.py` — the 4 test profiles as structured Python dicts, each with `profile_id`,
+  `initial_message`, `follow_up_answers`, and a `pass_criteria` list derived from that
+  profile's "Test Focus" description.
+- `run_profile(test_case, system_prompt, client)` — sends the initial message, captures
+  the intake reply, sends the follow-up answers, captures the final plan. Returns both.
+- `judge_response(test_case, intake_reply, final_plan, client)` — a second, separate API
+  call (no system prompt — this is a judging task, not a coaching task) that scores the
+  full conversation (intake + final plan together, since some criteria like "recommends a
+  medical check" are satisfied at the intake stage) against the profile's pass criteria.
+  Forces a structured output format (`CRITERION N: PASS/FAIL - reason`, then an
+  `OVERALL` line) so results can be parsed programmatically rather than read by hand.
+- Judge rule: OVERALL is PASS only if every individual criterion passes (strict, not a
+  threshold) — a deliberate simplification to start with.
+
+Result of the full run: User_1, User_2, User_4 all PASS on every criterion. User_3 PASS on
+this run, but see the note above about run-to-run variability on the medical-clearance
+acknowledgment specifically.
+
 ## Next steps
-1. Decide on the User_3 consistency issue — either accept current behavior or add a system
-   prompt rule about explicitly acknowledging a prior medical-clearance recommendation when
-   delivering a plan afterward. Retest User_3 if the prompt changes.
-2. Formalize the 4 test profiles into an actual eval script — write explicit pass/fail
-   criteria per profile (this doc is effectively a first draft of those criteria), automate
-   running them end-to-end (intake → follow-up → plan), and use an LLM-as-judge to score
-   responses instead of reading transcripts by hand.
+1. Run each profile N times (e.g. 3-5 trials) instead of once, and report a pass *rate*
+   per criterion rather than a single pass/fail — motivated directly by the User_3 finding
+   that at least one criterion's outcome isn't stable across runs.
+2. Decide on the User_3 consistency issue specifically — either accept the observed
+   variability as acceptable (exercises stay safe either way) or add a system prompt rule
+   about explicitly acknowledging a prior medical-clearance recommendation when delivering
+   a plan afterward, then re-run trials to see if it stabilizes the behavior.
 3. Add persistent memory (start with a simple JSON file per user) so returning users don't
    re-answer intake every session.
 4. Add tool-calling (e.g. logging a completed workout, looking up an exercise

@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
 import data as d
+import judge as jd
 import anthropic
 load_dotenv()
 
@@ -50,7 +51,13 @@ def run_profile(test_case, system_prompt, client):
     
 count = len(d.test_cases)
 for i in range(count):
+    print("\n")
     print(f"For User_{i+1}:\n")
     test_case = d.test_cases[i]
     response = run_profile(test_case, system_prompt, client)
     print(response)
+    
+    print("\n")
+    print(f"Judge Response For User_{i+1}:\n")
+    judge_response = jd.judge_response(test_case, response["intake_reply"], response["final_plan"], client)
+    print(judge_response)
