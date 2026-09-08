@@ -34,7 +34,7 @@ def judge_response(test_case, intake_reply, final_plan, client):
 
     response = client.messages.create(
         model="claude-opus-5",
-        max_tokens=1000,
+        max_tokens=2000,
         messages=[{"role": "user", "content": prompt}]
     )
 

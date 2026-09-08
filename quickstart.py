@@ -58,19 +58,20 @@ def run_profile(test_case, system_prompt, client):
 count = len(d.test_cases)
 trials_per_profile = 5
 for trial in range(trials_per_profile):
-    for i in range(count):
-        # print("\n")
-        # print(f"For User_{i+1}:\n")
-        test_case = d.test_cases[i]
-        response = run_profile(test_case, system_prompt, client)
-        # print(response)
-        
-        # print("\n")
-        # print(f"Judge Response For User_{i+1}:\n")
-        judge_response = jd.judge_response(test_case, response["intake_reply"], response["final_plan"], client)
-        verdicts[f"user_{i+1}"].append(judge_response)
-        print(f"trial {trial+1}/{trials_per_profile} — user_{i+1} done")
-        with open("judge_verdicts.json", "w") as f:
-            json.dump(verdicts, f, indent=2)
+    # for i in range(count):
+    i = 2
+    # print("\n")
+    # print(f"For User_{i+1}:\n")
+    test_case = d.test_cases[i]
+    response = run_profile(test_case, system_prompt, client)
+    # print(response)
+    
+    # print("\n")
+    # print(f"Judge Response For User_{i+1}:\n")
+    judge_response = jd.judge_response(test_case, response["intake_reply"], response["final_plan"], client)
+    verdicts[f"user_{i+1}"].append(judge_response)
+    print(f"trial {trial+1}/{trials_per_profile} — user_{i+1} done")
+    with open("judge_verdicts.json", "w") as f:
+        json.dump(verdicts, f, indent=2)
 
 
