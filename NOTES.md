@@ -16,8 +16,8 @@ tool-calling yet, just a single-session conversational loop.
 - [x] Full plan review for all 4 test profiles — 3 clean passes (User_1, User_2, User_4),
       1 pass with a flagged consistency issue (User_3)
 - [x] Automated eval harness — structured test cases, `run_profile()` for end-to-end
-      generation, `judge_response()` for LLM-as-judge scoring against per-profile criteria
-- [ ] Multi-run trials per profile (pass rate instead of single pass/fail)
+      generation, `judge_response()` for LLM-as-judge scoring, `parse_verdict()` +
+      `compute_pass_rates()` for multi-trial aggregation into per-criterion pass rates
 - [ ] Memory across sessions
 - [ ] Tool calling
 
@@ -167,18 +167,37 @@ Result of the full run: User_1, User_2, User_4 all PASS on every criterion. User
 this run, but see the note above about run-to-run variability on the medical-clearance
 acknowledgment specifically.
 
+### Pass-rate aggregation (final step)
+Built `parse_verdict()` to turn each raw judge text string into structured data
+(`{"criteria": {1: "PASS", 2: "PASS", ...}, "overall": "PASS"}`), then `compute_pass_rates()`
+to aggregate across all trials per profile into per-criterion pass rates, not just a single
+pass/fail. This is the piece that makes the multi-trial approach actually useful — a single
+run can't distinguish a reliable behavior from a lucky one, but a rate across 5 trials can.
+
+**Baseline result (5 trials per profile, current system prompt):**
+
+| Profile | Overall | Per-criterion |
+|---|---|---|
+| User_1 | 5/5 | All 4 criteria: 5/5 |
+| User_2 | 5/5 | All 3 criteria: 5/5 |
+| User_3 | 5/5 | All 6 criteria: 5/5 |
+| User_4 | 5/5 | All 6 criteria: 5/5 |
+
+Every criterion passed in every trial in this batch. Worth noting this doesn't erase the
+earlier User_3 criterion-4 finding (one FAIL in an earlier, partly-truncated batch) — it
+just means this particular 5-trial sample came back clean. The honest read: current
+baseline is strong (100% across a real, non-trivial trial count), but the earlier finding
+shows a specific borderline case is worth periodically re-checking with more trials rather
+than assuming it's fully resolved.
+
 ## Next steps
-1. Write the verdict parser — turn each raw judge text string in `judge_verdicts.json`
-   into structured per-criterion PASS/FAIL data, then compute a pass rate per criterion
-   per profile (e.g. "User_3, criterion 4: 5/6 PASS across trials"). This is the piece that
-   turns the raw trial data already collected into an actual reportable result.
-2. Run User_1, User_2, and User_4's 5 trials through the same completeness check applied to
-   User_3 (verify no truncation) before trusting their all-PASS results as clean data.
-3. Decide whether to run more trials on User_3's criterion 4 specifically to get a more
-   confident pass rate, given the current split is 1 FAIL / 5 PASS across two batches with
-   a confound (the FAIL batch had unrelated truncation issues, even though that particular
-   trial was itself complete).
-4. Add persistent memory (start with a simple JSON file per user) so returning users don't
+1. Periodically re-run User_3's trials (especially criterion 4) with a larger trial count
+   to get a more confident read on whether the earlier borderline FAIL is a rare edge case
+   or worth a system prompt refinement.
+2. Add persistent memory (start with a simple JSON file per user) so returning users don't
    re-answer intake every session.
-5. Add tool-calling (e.g. logging a completed workout, looking up an exercise
+3. Add tool-calling (e.g. logging a completed workout, looking up an exercise
    substitution) once memory is in place.
+4. Write up the eval harness in the README — this is genuinely the strongest, most
+   differentiated part of the project for a resume/portfolio and deserves its own
+   explanation of the architecture and what it caught.
